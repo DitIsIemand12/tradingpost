@@ -3,71 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Post - ADMIN</title>
+    <title>Trading Post - ADMIN PRO</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; padding: 20px; color: #333; }
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; color: #333; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h1, h2 { color: #2c3e50; margin-top: 0; }
-        
-        /* Prijzen aanpassen */
-        .price-controls { display: flex; gap: 10px; flex-wrap: wrap; }
-        .control-group { background: #eee; padding: 10px; border-radius: 5px; flex: 1; min-width: 120px; }
-        input[type="number"], input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        
-        button { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { background: #27ae60; }
+        h2 { margin-top: 0; color: #2c3e50; }
+        input, select { padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         button.danger { background: #e74c3c; }
-        
-        /* Leaderboard */
-        #leaderboard ol { padding-left: 20px; font-size: 1.2em; }
-        #leaderboard li { margin-bottom: 10px; padding: 10px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-        .player-name { font-weight: bold; color: #2c3e50; }
-        .player-cash { color: #27ae60; font-family: monospace; }
-        
-        .event-active { color: #e74c3c; font-weight: bold; margin-top: 5px; display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+        .code-display { font-family: monospace; font-weight: bold; background: #eee; padding: 3px 6px; border-radius: 3px; }
     </style>
 </head>
 <body>
 
     <h1>Markt Meester Dashboard</h1>
 
+    <!-- PRIJZEN & EVENTS (Hetzelfde als voorheen) -->
     <div class="card">
-        <h2>💰 Live Prijzen</h2>
-        <div class="price-controls">
-            <div class="control-group">
-                🪵 Hout (€): <input type="number" id="w" value="10">
-            </div>
-            <div class="control-group">
-                🪨 Steen (€): <input type="number" id="s" value="30">
-            </div>
-            <div class="control-group">
-                💰 Goud (€): <input type="number" id="g" value="200">
-            </div>
-        </div>
+        <h2>💰 Live Prijzen & 📢 Events</h2>
+        Hout: <input type="number" id="w" value="10" style="width:60px"> 
+        Steen: <input type="number" id="s" value="30" style="width:60px"> 
+        Goud: <input type="number" id="g" value="200" style="width:60px">
         <button onclick="updatePrices()">Update Prijzen</button>
+        <br><br>
+        Bericht: <input type="text" id="ev" placeholder="Event tekst..." style="width:200px">
+        <button onclick="setEvent()">Verstuur</button> <button class="danger" onclick="clearEvent()">Wis</button>
     </div>
 
+    <!-- NIEUW: CODES BEHEREN -->
     <div class="card">
-        <h2>📢 Event Bericht</h2>
-        <input type="text" id="ev" placeholder="Bijv: Goudprijs gaat stijgen! 🚀">
-        <span id="current-event" class="event-active"></span>
-        <button onclick="setEvent()">Bericht versturen</button>
-        <button class="danger" onclick="clearEvent()">Bericht wissen</button>
+        <h2>🔑 Grondstof Codes Beheren</h2>
+        <p>Voeg hier codes toe die je op QR-kaarten print.</p>
+        <input type="text" id="new-code" placeholder="CODE (bijv: BOOM12)">
+        <select id="new-type">
+            <option value="wood">🪵 Hout</option>
+            <option value="stone">🪨 Steen</option>
+            <option value="gold">💰 Goud</option>
+        </select>
+        Aantal: <input type="number" id="new-amount" value="5" style="width:50px">
+        <button onclick="addCode()">Code Toevoegen</button>
+
+        <table id="codes-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Aantal</th>
+                    <th>Actie</th>
+                </tr>
+            </thead>
+            <tbody id="codes-list"></tbody>
+        </table>
     </div>
 
+    <!-- LEADERBOARD -->
     <div class="card">
-        <h2>🏆 Leaderboard (Top Traders)</h2>
-        <div id="leaderboard">Wachten op spelers...</div>
-    </div>
-
-    <div class="card" style="opacity: 0.6;">
-        <button class="danger" onclick="resetGame()">RESET HELE SPEL (Verwijdert alle spelers!)</button>
+        <h2>🏆 Leaderboard</h2>
+        <div id="leaderboard">Laden...</div>
     </div>
 
 <script>
-    // --- FIREBASE CONFIG (PLAK HIER JE EIGEN CONFIG) ---
     const firebaseConfig = {
         apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
         authDomain: "tradingpost-57b20.firebaseapp.com",
@@ -82,68 +81,54 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 1. Prijzen updaten
-    function updatePrices() {
-        db.ref('market/prices').set({
-            wood: parseInt(document.getElementById('w').value),
-            stone: parseInt(document.getElementById('s').value),
-            gold: parseInt(document.getElementById('g').value)
-        });
+    // PRIJZEN & EVENTS FUNCTIONS
+    function updatePrices() { db.ref('market/prices').set({ wood: parseInt(document.getElementById('w').value), stone: parseInt(document.getElementById('s').value), gold: parseInt(document.getElementById('g').value) }); }
+    function setEvent() { db.ref('market/event').set(document.getElementById('ev').value); }
+    function clearEvent() { db.ref('market/event').set(null); }
+
+    // CODES BEHEREN FUNCTIONS
+    function addCode() {
+        const code = document.getElementById('new-code').value.toUpperCase().trim();
+        const type = document.getElementById('new-type').value;
+        const amount = parseInt(document.getElementById('new-amount').value);
+
+        if(!code) return alert("Voer een code in!");
+
+        db.ref('market/codes/' + code).set({ t: type, a: amount });
+        document.getElementById('new-code').value = "";
     }
 
-    // 2. Events beheren
-    function setEvent() {
-        const msg = document.getElementById('ev').value;
-        db.ref('market/event').set(msg);
-    }
-    function clearEvent() {
-        db.ref('market/event').set(null);
-        document.getElementById('ev').value = "";
+    function deleteCode(code) {
+        if(confirm("Code " + code + " verwijderen?")) {
+            db.ref('market/codes/' + code).remove();
+        }
     }
 
-    // Luister naar huidig event voor weergave in admin
-    db.ref('market/event').on('value', snap => {
-        document.getElementById('current-event').innerText = snap.val() ? "Actief: " + snap.val() : "";
-    });
-
-    // 3. Leaderboard live volgen & sorteren
-    db.ref('players').on('value', (snap) => {
-        let players = [];
+    // Luister naar beschikbare codes
+    db.ref('market/codes').on('value', snap => {
+        let html = "";
         snap.forEach(child => {
-            const data = child.val();
-            players.push({
-                name: data.name || "Anoniem",
-                cash: data.cash || 0
-            });
+            const c = child.key;
+            const d = child.val();
+            html += `<tr>
+                <td><span class="code-display">${c}</span></td>
+                <td>${d.t}</td>
+                <td>${d.a}</td>
+                <td><button class="danger" onclick="deleteCode('${c}')">X</button></td>
+            </tr>`;
         });
-
-        // SORTEREN: Van hoog naar laag
-        players.sort((a, b) => b.cash - a.cash);
-
-        if (players.length === 0) {
-            document.getElementById('leaderboard').innerHTML = "Nog geen spelers verbonden...";
-            return;
-        }
-
-        let html = "<ol>";
-        players.forEach(p => {
-            html += `<li>
-                <span class="player-name">${p.name}</span>
-                <span class="player-cash">€${Math.floor(p.cash)}</span>
-            </li>`;
-        });
-        html += "</ol>";
-        document.getElementById('leaderboard').innerHTML = html;
+        document.getElementById('codes-list').innerHTML = html;
     });
 
-    // 4. Reset functie
-    function resetGame() {
-        if (confirm("Weet je zeker dat je alle spelers en scores wilt wissen? Dit kan niet ongedaan gemaakt worden!")) {
-            db.ref('players').remove();
-            alert("Leaderboard is gewist.");
-        }
-    }
+    // LEADERBOARD (Gesorteerd)
+    db.ref('players').on('value', snap => {
+        let pArr = [];
+        snap.forEach(c => { pArr.push({name: c.val().name, cash: c.val().cash}); });
+        pArr.sort((a,b) => b.cash - a.cash);
+        let html = "<ol>";
+        pArr.forEach(p => { html += `<li><b>${p.name}</b>: €${Math.floor(p.cash)}</li>`; });
+        document.getElementById('leaderboard').innerHTML = html + "</ol>";
+    });
 </script>
-
 </body>
 </html>
