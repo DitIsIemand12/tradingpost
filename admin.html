@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+</head>
+<body style="font-family:sans-serif; padding:20px;">
+    <h1>Markt Meester Paneel</h1>
+    
+    <h3>Prijzen Aanpassen</h3>
+    Hout: <input type="number" id="w" value="10"> <br>
+    Steen: <input type="number" id="s" value="30"> <br>
+    Goud: <input type="number" id="g" value="200"> <br>
+    <button onclick="updatePrices()">Update Prijzen op alle telefoons</button>
+
+    <hr>
+    <h3>Event Bericht (bijv. "Goudprijs gaat stijgen!")</h3>
+    <input type="text" id="ev" placeholder="Typ bericht...">
+    <button onclick="setEvent()">Stuur naar iedereen</button>
+    <button onclick="clearEvent()">Wis bericht</button>
+
+    <hr>
+    <h3>Leaderboard</h3>
+    <div id="leaderboard">Laden...</div>
+
+    <script>
+        // PLAK HIER DEZELFDE CONFIG
+        const firebaseConfig = {   apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
+  authDomain: "tradingpost-57b20.firebaseapp.com",
+  projectId: "tradingpost-57b20",
+  storageBucket: "tradingpost-57b20.firebasestorage.app",
+  messagingSenderId: "358205969306",
+  appId: "1:358205969306:web:b9f76471828595f6fca023",
+  measurementId: "G-5V2LDELV02" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function updatePrices() {
+            db.ref('market/prices').set({
+                wood: document.getElementById('w').value,
+                stone: document.getElementById('s').value,
+                gold: document.getElementById('g').value
+            });
+        }
+
+        function setEvent() { db.ref('market/event').set(document.getElementById('ev').value); }
+        function clearEvent() { db.ref('market/event').set(null); }
+
+        // Leaderboard live volgen
+        db.ref('players').on('value', (snap) => {
+            let html = "<ul>";
+            snap.forEach(p => {
+                html += `<li>${p.key}: €${Math.floor(p.val().cash)}</li>`;
+            });
+            document.getElementById('leaderboard').innerHTML = html + "</ul>";
+        });
+    </script>
+</body>
+</html>
