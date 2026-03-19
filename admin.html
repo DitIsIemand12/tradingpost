@@ -1,64 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
-    <title>Admin Panel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Post - ADMIN</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; padding: 20px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2 { color: #2c3e50; margin-top: 0; }
+        
+        /* Prijzen aanpassen */
+        .price-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .control-group { background: #eee; padding: 10px; border-radius: 5px; flex: 1; min-width: 120px; }
+        input[type="number"], input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        button { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #27ae60; }
+        button.danger { background: #e74c3c; }
+        
+        /* Leaderboard */
+        #leaderboard ol { padding-left: 20px; font-size: 1.2em; }
+        #leaderboard li { margin-bottom: 10px; padding: 10px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        .player-name { font-weight: bold; color: #2c3e50; }
+        .player-cash { color: #27ae60; font-family: monospace; }
+        
+        .event-active { color: #e74c3c; font-weight: bold; margin-top: 5px; display: block; }
+    </style>
 </head>
-<body style="font-family:sans-serif; padding:20px;">
-    <h1>Markt Meester Paneel</h1>
-    
-    <h3>Prijzen Aanpassen</h3>
-    Hout: <input type="number" id="w" value="10"> <br>
-    Steen: <input type="number" id="s" value="30"> <br>
-    Goud: <input type="number" id="g" value="200"> <br>
-    <button onclick="updatePrices()">Update Prijzen op alle telefoons</button>
+<body>
 
-    <hr>
-    <h3>Event Bericht (bijv. "Goudprijs gaat stijgen!")</h3>
-    <input type="text" id="ev" placeholder="Typ bericht...">
-    <button onclick="setEvent()">Stuur naar iedereen</button>
-    <button onclick="clearEvent()">Wis bericht</button>
+    <h1>Markt Meester Dashboard</h1>
 
-    <hr>
-    <h3>Leaderboard</h3>
-    <div id="leaderboard">Laden...</div>
+    <div class="card">
+        <h2>💰 Live Prijzen</h2>
+        <div class="price-controls">
+            <div class="control-group">
+                🪵 Hout (€): <input type="number" id="w" value="10">
+            </div>
+            <div class="control-group">
+                🪨 Steen (€): <input type="number" id="s" value="30">
+            </div>
+            <div class="control-group">
+                💰 Goud (€): <input type="number" id="g" value="200">
+            </div>
+        </div>
+        <button onclick="updatePrices()">Update Prijzen</button>
+    </div>
 
-    <script>
-        // PLAK HIER DEZELFDE CONFIG
-        const firebaseConfig = {
-          apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
-          authDomain: "tradingpost-57b20.firebaseapp.com",
-          // VOEG DEZE REGEL TOE:
-          databaseURL: "https://tradingpost-57b20-default-rtdb.europe-west1.firebasedatabase.app", 
-          projectId: "tradingpost-57b20",
-          storageBucket: "tradingpost-57b20.firebasestorage.app",
-          messagingSenderId: "358205969306",
-          appId: "1:358205969306:web:b9f76471828595f6fca023",
-          measurementId: "G-5V2LDELV02"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    <div class="card">
+        <h2>📢 Event Bericht</h2>
+        <input type="text" id="ev" placeholder="Bijv: Goudprijs gaat stijgen! 🚀">
+        <span id="current-event" class="event-active"></span>
+        <button onclick="setEvent()">Bericht versturen</button>
+        <button class="danger" onclick="clearEvent()">Bericht wissen</button>
+    </div>
 
-        function updatePrices() {
-            db.ref('market/prices').set({
-                wood: document.getElementById('w').value,
-                stone: document.getElementById('s').value,
-                gold: document.getElementById('g').value
+    <div class="card">
+        <h2>🏆 Leaderboard (Top Traders)</h2>
+        <div id="leaderboard">Wachten op spelers...</div>
+    </div>
+
+    <div class="card" style="opacity: 0.6;">
+        <button class="danger" onclick="resetGame()">RESET HELE SPEL (Verwijdert alle spelers!)</button>
+    </div>
+
+<script>
+    // --- FIREBASE CONFIG (PLAK HIER JE EIGEN CONFIG) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
+        authDomain: "tradingpost-57b20.firebaseapp.com",
+        databaseURL: "https://tradingpost-57b20-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "tradingpost-57b20",
+        storageBucket: "tradingpost-57b20.firebasestorage.app",
+        messagingSenderId: "358205969306",
+        appId: "1:358205969306:web:b9f76471828595f6fca023",
+        measurementId: "G-5V2LDELV02"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 1. Prijzen updaten
+    function updatePrices() {
+        db.ref('market/prices').set({
+            wood: parseInt(document.getElementById('w').value),
+            stone: parseInt(document.getElementById('s').value),
+            gold: parseInt(document.getElementById('g').value)
+        });
+    }
+
+    // 2. Events beheren
+    function setEvent() {
+        const msg = document.getElementById('ev').value;
+        db.ref('market/event').set(msg);
+    }
+    function clearEvent() {
+        db.ref('market/event').set(null);
+        document.getElementById('ev').value = "";
+    }
+
+    // Luister naar huidig event voor weergave in admin
+    db.ref('market/event').on('value', snap => {
+        document.getElementById('current-event').innerText = snap.val() ? "Actief: " + snap.val() : "";
+    });
+
+    // 3. Leaderboard live volgen & sorteren
+    db.ref('players').on('value', (snap) => {
+        let players = [];
+        snap.forEach(child => {
+            const data = child.val();
+            players.push({
+                name: data.name || "Anoniem",
+                cash: data.cash || 0
             });
+        });
+
+        // SORTEREN: Van hoog naar laag
+        players.sort((a, b) => b.cash - a.cash);
+
+        if (players.length === 0) {
+            document.getElementById('leaderboard').innerHTML = "Nog geen spelers verbonden...";
+            return;
         }
 
-        function setEvent() { db.ref('market/event').set(document.getElementById('ev').value); }
-        function clearEvent() { db.ref('market/event').set(null); }
-
-        // Leaderboard live volgen
-        db.ref('players').on('value', (snap) => {
-            let html = "<ul>";
-            snap.forEach(p => {
-                html += `<li>${p.key}: €${Math.floor(p.val().cash)}</li>`;
-            });
-            document.getElementById('leaderboard').innerHTML = html + "</ul>";
+        let html = "<ol>";
+        players.forEach(p => {
+            html += `<li>
+                <span class="player-name">${p.name}</span>
+                <span class="player-cash">€${Math.floor(p.cash)}</span>
+            </li>`;
         });
-    </script>
+        html += "</ol>";
+        document.getElementById('leaderboard').innerHTML = html;
+    });
+
+    // 4. Reset functie
+    function resetGame() {
+        if (confirm("Weet je zeker dat je alle spelers en scores wilt wissen? Dit kan niet ongedaan gemaakt worden!")) {
+            db.ref('players').remove();
+            alert("Leaderboard is gewist.");
+        }
+    }
+</script>
+
 </body>
 </html>
