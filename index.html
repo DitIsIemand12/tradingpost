@@ -8,8 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --gold: #ffd700; --dark: #1a1a1a; --card: #2a2a2a; }
-        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; overflow-x: hidden; }
+        :root { --gold: #ffd700; --dark: #1a1a1a; --card: #2a2a2a; --green: #2ecc71; --red: #e74c3c; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; overflow-x: hidden; transition: background 0.3s; }
         
         /* Naam Overlay */
         #name-overlay { 
@@ -20,37 +20,66 @@
         #name-overlay input { padding: 15px; font-size: 1.2em; border-radius: 8px; border: none; width: 80%; margin-bottom: 15px; background: #eee; color: #000; }
         #name-overlay button { background: var(--gold); padding: 15px 40px; font-weight: bold; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; color: black; }
 
-        nav { display: flex; background: #000; border-bottom: 2px solid var(--gold); }
-        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; font-size: 1em; }
-        nav button.active { background: var(--card); color: var(--gold); border-bottom: 3px solid var(--gold); }
+        /* UI Elementen */
+        header { padding: 15px; background: #000; border-bottom: 2px solid var(--gold); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .cash-container { margin: 10px 0; }
+        .cash { font-size: 3em; color: var(--gold); font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
         
-        .container { padding: 15px; max-width: 500px; margin: auto; }
-        .cash { font-size: 2.5em; color: var(--gold); font-weight: bold; margin: 5px 0; }
-        .inv-grid { display: flex; justify-content: space-around; background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .market-item { background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .sell-btn { background: var(--gold); border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; color: black; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: black; min-height: 250px; }
+        .inv-grid { display: flex; justify-content: space-around; background: var(--card); padding: 15px; border-radius: 12px; margin: 10px; border: 1px solid #444; }
+        .inv-item { display: flex; flex-direction: column; align-items: center; font-size: 1.2em; font-weight: bold; }
+        .inv-label { font-size: 0.6em; color: #aaa; text-transform: uppercase; margin-top: 4px; }
+
+        nav { display: flex; background: #000; margin-bottom: 10px; }
+        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; font-size: 1em; opacity: 0.6; transition: 0.3s; }
+        nav button.active { opacity: 1; color: var(--gold); border-bottom: 3px solid var(--gold); }
+        
+        .container { padding: 10px; max-width: 500px; margin: auto; }
+        
+        .market-item { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .price-tag { font-size: 1.4em; font-weight: bold; color: var(--gold); }
+        .sell-btn { background: var(--gold); border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; color: black; box-shadow: 0 4px 0 #b89b00; active { transform: translateY(2px); box-shadow: 0 2px 0 #b89b00; } }
+
+        /* Scanner */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: black; border: 2px solid #444; }
+        
+        /* Notificatie Toast */
+        #toast { 
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); 
+            padding: 15px 30px; border-radius: 50px; background: rgba(0,0,0,0.9); 
+            color: white; font-weight: bold; z-index: 10000; opacity: 0; transition: 0.3s; 
+            pointer-events: none; border: 2px solid var(--gold);
+        }
+        #toast.show { opacity: 1; bottom: 100px; }
+
+        /* Feedback Flashes */
+        .flash-success { background: #0a3d1d !important; }
+        .flash-error { background: #3d0a0a !important; }
+
         .hidden { display: none !important; }
-        #event-box { background: firebrick; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-weight: bold; display: none; }
+        #event-box { background: #c0392b; padding: 12px; margin-bottom: 10px; border-radius: 8px; font-weight: bold; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<!-- Scherm voor naam invullen -->
+<div id="toast">Bericht</div>
+
 <div id="name-overlay">
     <h1>Handelsspel</h1>
-    <p>Hoe wil je heten?</p>
-    <input type="text" id="player-name-input" placeholder="Je naam...">
+    <p>Voer je handelsnaam in:</p>
+    <input type="text" id="player-name-input" placeholder="Naam...">
     <button onclick="savePlayerName()">START SPEL</button>
 </div>
 
-<header style="padding:10px; background:#000;">
-    <div style="font-size:0.7em; color: #aaa;">SPELER: <span id="display-name">...</span></div>
-    <div class="cash">€ <span id="cash">0</span></div>
+<header>
+    <div style="font-size:0.7em; color: #aaa; letter-spacing: 1px;">HANDELAAR: <span id="display-name" style="color:white; font-weight:bold;">...</span></div>
+    <div class="cash-container">
+        <div class="cash">€ <span id="cash">0</span></div>
+    </div>
     <div class="inv-grid">
-        <div>🪵 <span id="inv-wood">0</span></div>
-        <div>🪨 <span id="inv-stone">0</span></div>
-        <div>💰 <span id="inv-gold">0</span></div>
+        <div class="inv-item">🪵 <span id="inv-wood">0</span> <div class="inv-label">Hout</div></div>
+        <div class="inv-item">🪨 <span id="inv-stone">0</span> <div class="inv-label">Steen</div></div>
+        <div class="inv-item">💰 <span id="inv-gold">0</span> <div class="inv-label">Goud</div></div>
     </div>
 </header>
 
@@ -61,32 +90,35 @@
 
 <div class="container">
     <div id="event-box"></div>
+    
     <div id="tab-market">
         <div class="market-item">
-            <div>🪵 Hout: <b>€<span id="p-wood">0</span></b></div>
+            <div style="text-align:left;">🪵 <b>Hout</b></div>
+            <div class="price-tag">€<span id="p-wood">0</span></div>
             <button class="sell-btn" onclick="sell('wood')">VERKOOP</button>
         </div>
         <div class="market-item">
-            <div>🪨 Steen: <b>€<span id="p-stone">0</span></b></div>
+            <div style="text-align:left;">🪨 <b>Steen</b></div>
+            <div class="price-tag">€<span id="p-stone">0</span></div>
             <button class="sell-btn" onclick="sell('stone')">VERKOOP</button>
         </div>
         <div class="market-item">
-            <div>💰 Goud: <b>€<span id="p-gold">0</span></b></div>
+            <div style="text-align:left;">💰 <b>Goud</b></div>
+            <div class="price-tag">€<span id="p-gold">0</span></div>
             <button class="sell-btn" onclick="sell('gold')">VERKOOP</button>
         </div>
     </div>
+
     <div id="tab-scan" class="hidden">
         <div id="reader"></div>
-        <div style="margin-top: 15px;">
-            <input type="text" id="manual" placeholder="Handmatige code..." style="padding:12px; width:60%; border-radius: 5px; border:none;">
-            <button onclick="processCode(document.getElementById('manual').value)" style="padding:12px; border-radius: 5px; border:none; background: var(--gold); font-weight:bold; color:black;">OK</button>
+        <div style="margin-top: 15px; display:flex; gap:10px;">
+            <input type="text" id="manual" placeholder="Handmatige code..." style="padding:15px; flex:1; border-radius: 8px; border:none; background:#333; color:white;">
+            <button onclick="processCode(document.getElementById('manual').value)" style="padding:15px; border-radius: 8px; border:none; background: var(--gold); font-weight:bold; color:black;">OK</button>
         </div>
-        <p id="msg" style="color:var(--gold); font-weight:bold;"></p>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
         authDomain: "tradingpost-57b20.firebaseapp.com",
@@ -101,26 +133,58 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- VARIABELEN ---
     let playerID = localStorage.getItem('tp_playerID') || "ID_" + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('tp_playerID', playerID);
 
     let playerName = localStorage.getItem('tp_playerName');
     let state = JSON.parse(localStorage.getItem('tp_state')) || { cash: 100, wood: 0, stone: 0, gold: 0, used: [] };
-    let prices = { wood: 10, stone: 30, gold: 200 };
-    let activeCodes = {}; // Hier komen de codes uit de database in
+    let prices = { wood: 0, stone: 0, gold: 0 };
+    let activeCodes = {};
 
-    // --- FUNCTIES ---
+    // --- UTILS: Feedback & Animatie ---
+    
+    function showNotification(text, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.innerText = text;
+        toast.className = 'show';
+        
+        const flashClass = type === 'success' ? 'flash-success' : 'flash-error';
+        document.body.classList.add(flashClass);
+        
+        if (window.navigator.vibrate) window.navigator.vibrate(type === 'success' ? 50 : [50, 50, 50]);
+
+        setTimeout(() => { 
+            toast.className = ''; 
+            document.body.classList.remove(flashClass);
+        }, 2000);
+    }
+
+    function animateValue(id, start, end, duration) {
+        const obj = document.getElementById(id);
+        if (start === end) return;
+        const range = end - start;
+        let current = start;
+        const increment = end > start ? 1 : -1;
+        const stepTime = Math.abs(Math.floor(duration / range));
+        
+        // Voor grote getallen versnellen we de animatie
+        const timer = setInterval(() => {
+            current += increment;
+            obj.innerText = Math.floor(current);
+            if (current == end) clearInterval(timer);
+        }, Math.max(stepTime, 10));
+    }
+
+    // --- SPEL LOGICA ---
 
     function savePlayerName() {
-        const nameInput = document.getElementById('player-name-input');
-        const name = nameInput.value.trim();
-        if (name.length < 2) { alert("Voer een naam in van minimaal 2 letters."); return; }
+        const name = document.getElementById('player-name-input').value.trim();
+        if (name.length < 2) return alert("Naam te kort");
         playerName = name;
         localStorage.setItem('tp_playerName', name);
         document.getElementById('display-name').innerText = name;
         document.getElementById('name-overlay').style.display = 'none';
-        save();
+        save(true);
     }
 
     window.onload = function() {
@@ -128,25 +192,31 @@
             document.getElementById('name-overlay').style.display = 'none';
             document.getElementById('display-name').innerText = playerName;
         }
-        updateUI();
+        updateUI(true); // Eerste keer zonder animatie
     };
 
-    function save() {
+    function save(noAnim = false) {
         localStorage.setItem('tp_state', JSON.stringify(state));
-        updateUI();
-        if (playerName && playerID) {
-            db.ref('players/' + playerID).set({
-                name: playerName,
-                cash: state.cash
-            });
+        updateUI(noAnim);
+        if (playerName) {
+            db.ref('players/' + playerID).set({ name: playerName, cash: state.cash });
         }
     }
 
-    function updateUI() {
-        document.getElementById('cash').innerText = Math.floor(state.cash);
-        document.getElementById('inv-wood').innerText = state.wood;
-        document.getElementById('inv-stone').innerText = state.stone;
-        document.getElementById('inv-gold').innerText = state.gold;
+    let oldState = { ...state };
+    function updateUI(noAnim) {
+        if (noAnim) {
+            document.getElementById('cash').innerText = Math.floor(state.cash);
+            document.getElementById('inv-wood').innerText = state.wood;
+            document.getElementById('inv-stone').innerText = state.stone;
+            document.getElementById('inv-gold').innerText = state.gold;
+        } else {
+            animateValue('cash', oldState.cash, state.cash, 500);
+            animateValue('inv-wood', oldState.wood, state.wood, 300);
+            animateValue('inv-stone', oldState.stone, state.stone, 300);
+            animateValue('inv-gold', oldState.gold, state.gold, 300);
+        }
+        oldState = { ...state };
     }
 
     // --- DATABASE LISTENERS ---
@@ -161,47 +231,44 @@
 
     db.ref('market/event').on('value', (snap) => {
         const box = document.getElementById('event-box');
-        if(snap.val()) { box.innerText = "🚨 " + snap.val(); box.style.display = "block"; }
+        if(snap.val()) { box.innerText = snap.val(); box.style.display = "block"; }
         else { box.style.display = "none"; }
     });
 
-    // Haal de geldige codes live op uit de database (gezet via admin.html)
-    db.ref('market/codes').on('value', (snap) => {
-        activeCodes = snap.val() || {};
-    });
+    db.ref('market/codes').on('value', snap => { activeCodes = snap.val() || {}; });
 
-    // --- VERKOOP & SCANNER ---
+    // --- ACTIONS ---
 
     function processCode(code) {
         if (!code) return;
         code = code.toUpperCase().trim();
-        const msg = document.getElementById('msg');
-        
-        // 1. Check of speler deze code al eens heeft gebruikt
+        document.getElementById('manual').value = "";
+
         if(state.used.includes(code)) { 
-            msg.innerText = "❌ Deze code heb je al geclaimd!"; 
+            showNotification("❌ Al geclaimd!", "error"); 
             return; 
         }
         
-        // 2. Check of de code bestaat in de database (activeCodes)
         if(activeCodes[code]) {
-            const reward = activeCodes[code]; // Bevat {t: "wood", a: 5} etc.
-            state[reward.t] += reward.a;
+            const r = activeCodes[code];
+            state[r.t] += r.a;
             state.used.push(code);
             save();
-            msg.innerText = "✅ + " + reward.a + " " + reward.t;
-            setTimeout(() => { msg.innerText = ""; }, 3000);
+            showNotification(`✅ +${r.a} ${r.t.toUpperCase()}`, "success");
         } else {
-            msg.innerText = "❌ Ongeldige code";
-            setTimeout(() => { msg.innerText = ""; }, 2000);
+            showNotification("❌ Ongeldige code", "error");
         }
     }
 
     function sell(item) {
         if(state[item] > 0) {
-            state.cash += state[item] * prices[item];
+            const winst = state[item] * prices[item];
+            state.cash += winst;
             state[item] = 0;
             save();
+            showNotification(`💰 +€${winst} verdiend!`);
+        } else {
+            showNotification("Niks op voorraad", "error");
         }
     }
 
@@ -216,10 +283,8 @@
     let html5QrcodeScanner = null;
     function startScanner() {
         if(!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-            html5QrcodeScanner.render((text) => {
-                processCode(text);
-            });
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+            html5QrcodeScanner.render((text) => processCode(text));
         }
     }
 </script>
