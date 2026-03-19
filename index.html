@@ -9,27 +9,28 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --gold: #ffd700; --dark: #1a1a1a; --card: #2a2a2a; }
-        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; overflow-x: hidden; }
         
         /* Naam Overlay */
         #name-overlay { 
             position: fixed; top:0; left:0; width:100%; height:100%; 
-            background: var(--dark); z-index: 1000; display: flex; 
+            background: var(--dark); z-index: 9999; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
         }
-        #name-overlay input { padding: 15px; font-size: 1.2em; border-radius: 8px; border: none; width: 80%; margin-bottom: 10px; }
-        #name-overlay button { background: var(--gold); padding: 15px 30px; font-weight: bold; border: none; border-radius: 8px; font-size: 1.1em; }
+        #name-overlay input { padding: 15px; font-size: 1.2em; border-radius: 8px; border: none; width: 80%; margin-bottom: 15px; background: #eee; color: #000; }
+        #name-overlay button { background: var(--gold); padding: 15px 40px; font-weight: bold; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; color: black; }
 
         nav { display: flex; background: #000; border-bottom: 2px solid var(--gold); }
-        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; }
+        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; font-size: 1em; }
         nav button.active { background: var(--card); color: var(--gold); border-bottom: 3px solid var(--gold); }
+        
         .container { padding: 15px; max-width: 500px; margin: auto; }
         .cash { font-size: 2.5em; color: var(--gold); font-weight: bold; margin: 5px 0; }
         .inv-grid { display: flex; justify-content: space-around; background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
         .market-item { background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .sell-btn { background: var(--gold); border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; }
+        .sell-btn { background: var(--gold); border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; color: black; }
         #reader { width: 100%; border-radius: 10px; overflow: hidden; background: black; min-height: 250px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         #event-box { background: firebrick; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-weight: bold; display: none; }
     </style>
 </head>
@@ -37,8 +38,8 @@
 
 <!-- Scherm voor naam invullen -->
 <div id="name-overlay">
-    <h1>Welkom Handelaar!</h1>
-    <p>Voer je naam in om te beginnen:</p>
+    <h1>Handelsspel</h1>
+    <p>Hoe wil je heten?</p>
     <input type="text" id="player-name-input" placeholder="Je naam...">
     <button onclick="savePlayerName()">START SPEL</button>
 </div>
@@ -77,15 +78,15 @@
     <div id="tab-scan" class="hidden">
         <div id="reader"></div>
         <div style="margin-top: 15px;">
-            <input type="text" id="manual" placeholder="Handmatige code..." style="padding:10px; width:60%; border-radius: 5px; border:none;">
-            <button onclick="processCode(document.getElementById('manual').value)" style="padding:10px; border-radius: 5px; border:none; background: var(--gold); font-weight:bold;">OK</button>
+            <input type="text" id="manual" placeholder="Handmatige code..." style="padding:12px; width:60%; border-radius: 5px; border:none;">
+            <button onclick="processCode(document.getElementById('manual').value)" style="padding:12px; border-radius: 5px; border:none; background: var(--gold); font-weight:bold; color:black;">OK</button>
         </div>
         <p id="msg" style="color:var(--gold); font-weight:bold;"></p>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG (Let op: databaseURL toegevoegd!) ---
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
         authDomain: "tradingpost-57b20.firebaseapp.com",
@@ -100,18 +101,131 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- IDENTITEIT LOGICA ---
+    // --- VARIABELEN ---
     let playerID = localStorage.getItem('tp_playerID') || "ID_" + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('tp_playerID', playerID);
 
     let playerName = localStorage.getItem('tp_playerName');
+    let state = JSON.parse(localStorage.getItem('tp_state')) || { cash: 100, wood: 0, stone: 0, gold: 0, used: [] };
+    let prices = { wood: 10, stone: 30, gold: 200 };
 
-    // Als er al een naam is, verberg het naam-scherm meteen
-    if (playerName) {
+    // --- FUNCTIES ---
+
+    // Deze functie start het spel
+    function savePlayerName() {
+        const nameInput = document.getElementById('player-name-input');
+        const name = nameInput.value.trim();
+
+        if (name.length < 2) {
+            alert("Voer een naam in van minimaal 2 letters.");
+            return;
+        }
+
+        // Sla lokaal op
+        playerName = name;
+        localStorage.setItem('tp_playerName', name);
+        
+        // UI bijwerken
+        document.getElementById('display-name').innerText = name;
         document.getElementById('name-overlay').style.display = 'none';
-        document.getElementById('display-name').innerText = playerName;
+
+        // Stuur naar database
+        save();
     }
 
-    function savePlayerName() {
-        const inputName = document.getElementById('player-name-input').value.trim();
-        if (inputName.length < 2) return ale
+    // Check of we al een naam hebben bij het opstarten
+    window.onload = function() {
+        if (playerName) {
+            document.getElementById('name-overlay').style.display = 'none';
+            document.getElementById('display-name').innerText = playerName;
+        }
+        updateUI();
+    };
+
+    function save() {
+        localStorage.setItem('tp_state', JSON.stringify(state));
+        updateUI();
+        
+        // Alleen naar database sturen als er een naam is
+        if (playerName && playerID) {
+            db.ref('players/' + playerID).set({
+                name: playerName,
+                cash: state.cash
+            });
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('cash').innerText = Math.floor(state.cash);
+        document.getElementById('inv-wood').innerText = state.wood;
+        document.getElementById('inv-stone').innerText = state.stone;
+        document.getElementById('inv-gold').innerText = state.gold;
+    }
+
+    // --- DATABASE LISTENERS ---
+    db.ref('market/prices').on('value', (snap) => {
+        if(snap.val()) {
+            prices = snap.val();
+            document.getElementById('p-wood').innerText = prices.wood;
+            document.getElementById('p-stone').innerText = prices.stone;
+            document.getElementById('p-gold').innerText = prices.gold;
+        }
+    });
+
+    db.ref('market/event').on('value', (snap) => {
+        const box = document.getElementById('event-box');
+        if(snap.val()) { box.innerText = "🚨 " + snap.val(); box.style.display = "block"; }
+        else { box.style.display = "none"; }
+    });
+
+    // --- VERKOOP & SCANNER ---
+    const CODES = { 
+        "WOOD1": {t:"wood", a:5}, "WOOD2": {t:"wood", a:5}, 
+        "ROCK1": {t:"stone", a:2}, "ROCK2": {t:"stone", a:3}, 
+        "GOLD1": {t:"gold", a:1}, "SECRET7": {t:"gold", a:3} 
+    };
+
+    function processCode(code) {
+        if (!code) return;
+        code = code.toUpperCase().trim();
+        const msg = document.getElementById('msg');
+        if(state.used.includes(code)) { msg.innerText = "❌ Al gebruikt!"; return; }
+        if(CODES[code]) {
+            state[CODES[code].t] += CODES[code].a;
+            state.used.push(code);
+            save();
+            msg.innerText = "✅ + " + CODES[code].a + " " + CODES[code].t;
+            setTimeout(() => { msg.innerText = ""; }, 2000);
+        } else {
+            msg.innerText = "❌ Ongeldige code";
+        }
+    }
+
+    function sell(item) {
+        if(state[item] > 0) {
+            state.cash += state[item] * prices[item];
+            state[item] = 0;
+            save();
+        }
+    }
+
+    function showTab(t) {
+        document.getElementById('tab-market').classList.toggle('hidden', t !== 'market');
+        document.getElementById('tab-scan').classList.toggle('hidden', t !== 'scan');
+        document.getElementById('btn-market').classList.toggle('active', t === 'market');
+        document.getElementById('btn-scan').classList.toggle('active', t === 'scan');
+        if(t === 'scan') startScanner();
+    }
+
+    let html5QrcodeScanner = null;
+    function startScanner() {
+        if(!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+            html5QrcodeScanner.render((text) => {
+                processCode(text);
+            });
+        }
+    }
+</script>
+</body>
+</html>
