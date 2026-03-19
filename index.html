@@ -108,32 +108,21 @@
     let playerName = localStorage.getItem('tp_playerName');
     let state = JSON.parse(localStorage.getItem('tp_state')) || { cash: 100, wood: 0, stone: 0, gold: 0, used: [] };
     let prices = { wood: 10, stone: 30, gold: 200 };
+    let activeCodes = {}; // Hier komen de codes uit de database in
 
     // --- FUNCTIES ---
 
-    // Deze functie start het spel
     function savePlayerName() {
         const nameInput = document.getElementById('player-name-input');
         const name = nameInput.value.trim();
-
-        if (name.length < 2) {
-            alert("Voer een naam in van minimaal 2 letters.");
-            return;
-        }
-
-        // Sla lokaal op
+        if (name.length < 2) { alert("Voer een naam in van minimaal 2 letters."); return; }
         playerName = name;
         localStorage.setItem('tp_playerName', name);
-        
-        // UI bijwerken
         document.getElementById('display-name').innerText = name;
         document.getElementById('name-overlay').style.display = 'none';
-
-        // Stuur naar database
         save();
     }
 
-    // Check of we al een naam hebben bij het opstarten
     window.onload = function() {
         if (playerName) {
             document.getElementById('name-overlay').style.display = 'none';
@@ -145,8 +134,6 @@
     function save() {
         localStorage.setItem('tp_state', JSON.stringify(state));
         updateUI();
-        
-        // Alleen naar database sturen als er een naam is
         if (playerName && playerID) {
             db.ref('players/' + playerID).set({
                 name: playerName,
@@ -178,26 +165,35 @@
         else { box.style.display = "none"; }
     });
 
+    // Haal de geldige codes live op uit de database (gezet via admin.html)
+    db.ref('market/codes').on('value', (snap) => {
+        activeCodes = snap.val() || {};
+    });
+
     // --- VERKOOP & SCANNER ---
-    const CODES = { 
-        "WOOD1": {t:"wood", a:5}, "WOOD2": {t:"wood", a:5}, 
-        "ROCK1": {t:"stone", a:2}, "ROCK2": {t:"stone", a:3}, 
-        "GOLD1": {t:"gold", a:1}, "SECRET7": {t:"gold", a:3} 
-    };
 
     function processCode(code) {
         if (!code) return;
         code = code.toUpperCase().trim();
         const msg = document.getElementById('msg');
-        if(state.used.includes(code)) { msg.innerText = "❌ Al gebruikt!"; return; }
-        if(CODES[code]) {
-            state[CODES[code].t] += CODES[code].a;
+        
+        // 1. Check of speler deze code al eens heeft gebruikt
+        if(state.used.includes(code)) { 
+            msg.innerText = "❌ Deze code heb je al geclaimd!"; 
+            return; 
+        }
+        
+        // 2. Check of de code bestaat in de database (activeCodes)
+        if(activeCodes[code]) {
+            const reward = activeCodes[code]; // Bevat {t: "wood", a: 5} etc.
+            state[reward.t] += reward.a;
             state.used.push(code);
             save();
-            msg.innerText = "✅ + " + CODES[code].a + " " + CODES[code].t;
-            setTimeout(() => { msg.innerText = ""; }, 2000);
+            msg.innerText = "✅ + " + reward.a + " " + reward.t;
+            setTimeout(() => { msg.innerText = ""; }, 3000);
         } else {
             msg.innerText = "❌ Ongeldige code";
+            setTimeout(() => { msg.innerText = ""; }, 2000);
         }
     }
 
