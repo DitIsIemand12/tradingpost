@@ -3,215 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Trading Post Pro</title>
+    <title>Trading Post - LIVE</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --gold: #ffd700; --dark: #1a1a1a; --card: #2a2a2a; --green: #4caf50; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; overflow-x: hidden; }
-        
-        /* Navigatie */
-        nav { display: flex; background: #000; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--gold); }
-        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; font-size: 14px; }
+        :root { --gold: #ffd700; --dark: #1a1a1a; --card: #2a2a2a; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
+        nav { display: flex; background: #000; border-bottom: 2px solid var(--gold); }
+        nav button { flex: 1; padding: 15px; border: none; background: none; color: white; font-weight: bold; }
         nav button.active { background: var(--card); color: var(--gold); border-bottom: 3px solid var(--gold); }
-
         .container { padding: 15px; max-width: 500px; margin: auto; }
-        
-        /* Stats */
-        .wallet-card { background: linear-gradient(145deg, #333, #222); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .cash { font-size: 2.8em; color: var(--gold); font-weight: bold; margin: 5px 0; }
-        
-        /* Items */
-        .inventory-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
-        .inv-box { background: var(--card); flex: 1; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #444; }
-
-        /* Market */
-        .market-item { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--gold); }
-        .price { font-size: 1.4em; font-weight: bold; }
-        .sell-btn { background: var(--gold); color: black; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .sell-btn:disabled { background: #444; color: #888; }
-
-        /* Scanner area */
-        #scanner-container { background: black; border-radius: 15px; overflow: hidden; margin-bottom: 15px; border: 2px solid #444; min-height: 250px; }
-        .manual-input { display: flex; gap: 5px; margin-top: 15px; }
-        .manual-input input { flex: 1; padding: 12px; border-radius: 5px; border: none; text-transform: uppercase; }
-        .manual-input button { background: var(--green); border: none; color: white; padding: 10px; border-radius: 5px; font-weight: bold; }
-
-        .hidden { display: none !important; }
-        .timer { font-size: 0.8em; color: #aaa; text-align: center; margin-top: 10px; }
-        .log-msg { color: var(--gold); text-align: center; font-weight: bold; margin-top: 10px; min-height: 1.2em; }
+        .cash { font-size: 2.5em; color: var(--gold); font-weight: bold; margin: 10px 0; }
+        .inv-grid { display: flex; justify-content: space-around; background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .market-item { background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .sell-btn { background: var(--gold); border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: black; }
+        .hidden { display: none; }
+        #event-box { background: firebrick; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
 
+<header style="padding:10px; background:#000;">
+    <div style="font-size:0.7em;">UW KAPITAAL</div>
+    <div class="cash">€ <span id="cash">0</span></div>
+    <div class="inv-grid">
+        <div>🪵 <span id="inv-wood">0</span></div>
+        <div>🪨 <span id="inv-stone">0</span></div>
+        <div>💰 <span id="inv-gold">0</span></div>
+    </div>
+</header>
+
 <nav>
-    <button id="nav-market" class="active" onclick="showTab('market')">💰 MARKT</button>
-    <button id="nav-scan" onclick="showTab('scan')">📸 SCAN / INVOER</button>
+    <button id="btn-market" class="active" onclick="showTab('market')">MARKT</button>
+    <button id="btn-scan" onclick="showTab('scan')">SCANNER</button>
 </nav>
 
 <div class="container">
-    <div class="wallet-card">
-        <div>Totaal Kapitaal</div>
-        <div class="cash">€ <span id="cash">0</span></div>
-        <div class="inventory-grid">
-            <div class="inv-box">🪵<br><span id="inv-wood">0</span></div>
-            <div class="inv-box">🪨<br><span id="inv-stone">0</span></div>
-            <div class="inv-box">💰<br><span id="inv-gold">0</span></div>
-        </div>
-    </div>
+    <div id="event-box"></div>
 
-    <!-- MARKT TAB -->
     <div id="tab-market">
-        <div class="timer">Markt ververst over: <span id="countdown">00:00</span></div>
-        <div id="market-list">
-            <!-- Items worden door JS geladen -->
-            <div class="market-item">
-                <div>🪵 Hout</div>
-                <div class="price">€ <span id="price-wood">0</span></div>
-                <button class="sell-btn" onclick="sell('wood')">VERKOOP</button>
-            </div>
-            <div class="market-item">
-                <div>🪨 Steen</div>
-                <div class="price">€ <span id="price-stone">0</span></div>
-                <button class="sell-btn" onclick="sell('stone')">VERKOOP</button>
-            </div>
-            <div class="market-item">
-                <div>💰 Goud</div>
-                <div class="price">€ <span id="price-gold">0</span></div>
-                <button class="sell-btn" onclick="sell('gold')">VERKOOP</button>
-            </div>
+        <div class="market-item">
+            <div>🪵 Hout: <b>€<span id="p-wood">0</span></b></div>
+            <button class="sell-btn" onclick="sell('wood')">VERKOOP</button>
+        </div>
+        <div class="market-item">
+            <div>🪨 Steen: <b>€<span id="p-stone">0</span></b></div>
+            <button class="sell-btn" onclick="sell('stone')">VERKOOP</button>
+        </div>
+        <div class="market-item">
+            <div>💰 Goud: <b>€<span id="p-gold">0</span></b></div>
+            <button class="sell-btn" onclick="sell('gold')">VERKOOP</button>
         </div>
     </div>
 
-    <!-- SCAN TAB -->
     <div id="tab-scan" class="hidden">
-        <div id="scanner-container">
-            <div id="reader"></div>
-        </div>
-        
-        <div class="manual-input">
-            <input type="text" id="manual-code" placeholder="Typ code hier...">
-            <button onclick="handleManualCode()">OK</button>
-        </div>
-        <div id="log-msg" class="log-msg"></div>
-        <p style="font-size: 0.8em; color: #888;">Scan een QR-code of typ de unieke code in die op het kaartje staat.</p>
+        <div id="reader"></div>
+        <input type="text" id="manual" placeholder="Code handmatig..." style="margin-top:10px; padding:10px; width:70%;">
+        <button onclick="processCode(document.getElementById('manual').value)" style="padding:10px;">OK</button>
+        <p id="msg"></p>
     </div>
 </div>
 
 <script>
-    // --- DATABASE VAN UNIEKE CODES ---
-    // In een echt spel staan deze op een server, nu staan ze hier.
-    // Omdat we ze 'mappen' kan een speler ze niet raden door naar de URL te kijken.
-    const CODE_DATABASE = {
-        "WOOD11": {type: "wood", amount: 5}, "WOOD22": {type: "wood", amount: 5}, "WOOD33": {type: "wood", amount: 10},
-        "ROCK11": {type: "stone", amount: 2}, "ROCK22": {type: "stone", amount: 3}, "ROCK33": {type: "stone", amount: 5},
-        "GOLD99": {type: "gold", amount: 1}, "GOLD88": {type: "gold", amount: 1}, "SECRET7": {type: "gold", amount: 3}
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+    apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
+    authDomain: "tradingpost-57b20.firebaseapp.com",
+    projectId: "tradingpost-57b20",
+    storageBucket: "tradingpost-57b20.firebasestorage.app",
+    messagingSenderId: "358205969306",
+    appId: "1:358205969306:web:b9f76471828595f6fca023",
+    measurementId: "G-5V2LDELV02"
+        // PLAK HIER JOUW GEKOPIEERDE CONFIG VAN STAP 1
     };
 
-    let gameState = JSON.parse(localStorage.getItem('tp_state')) || {
-        cash: 100, wood: 0, stone: 0, gold: 0, usedCodes: []
-    };
+    // Initialiseer Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    let currentPrices = { wood: 0, stone: 0, gold: 0 };
-    let html5QrcodeScanner = null;
+    // Spelersnaam (uniek per telefoon)
+    let playerName = localStorage.getItem('tp_name') || "Speler_" + Math.floor(Math.random()*9999);
+    localStorage.setItem('tp_name', playerName);
 
-    // --- PRIJS LOGICA (Elke 3 minuten) ---
-    function updateMarket() {
-        const now = new Date();
-        const interval = 3;
-        const totalMinutes = (now.getHours() * 60) + now.getMinutes();
-        const intervalId = Math.floor(totalMinutes / interval);
+    let state = JSON.parse(localStorage.getItem('tp_state')) || { cash: 100, wood: 0, stone: 0, gold: 0, used: [] };
+    let prices = { wood: 10, stone: 30, gold: 200 };
 
-        // Voorspelbare maar 'random' prijzen
-        currentPrices.wood = Math.floor(Math.abs(Math.sin(intervalId) * 10) + 5);
-        currentPrices.stone = Math.floor(Math.abs(Math.cos(intervalId) * 25) + 20);
-        currentPrices.gold = Math.floor(Math.abs(Math.sin(intervalId * 1.5) * 200) + 100);
-
-        document.getElementById('price-wood').innerText = currentPrices.wood;
-        document.getElementById('price-stone').innerText = currentPrices.stone;
-        document.getElementById('price-gold').innerText = currentPrices.gold;
-
-        const secondsLeft = (interval * 60) - ((now.getMinutes() % interval) * 60 + now.getSeconds());
-        const m = Math.floor(secondsLeft / 60);
-        const s = secondsLeft % 60;
-        document.getElementById('countdown').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-    }
-
-    // --- CODE VERWERKEN ---
-    function processCode(inputCode) {
-        const code = inputCode.toUpperCase().trim();
-        const msg = document.getElementById('log-msg');
-
-        if (gameState.usedCodes.includes(code)) {
-            msg.innerText = "❌ Code al gebruikt!";
-            msg.style.color = "red";
-            return;
+    // --- LIVE UPDATES VANUIT DATABASE ---
+    db.ref('market/prices').on('value', (snap) => {
+        if(snap.val()) {
+            prices = snap.val();
+            document.getElementById('p-wood').innerText = prices.wood;
+            document.getElementById('p-stone').innerText = prices.stone;
+            document.getElementById('p-gold').innerText = prices.gold;
         }
+    });
 
-        if (CODE_DATABASE[code]) {
-            const reward = CODE_DATABASE[code];
-            gameState[reward.type] += reward.amount;
-            gameState.usedCodes.push(code);
-            save();
-            msg.innerText = `✅ Ontvangen: ${reward.amount}x ${reward.type}!`;
-            msg.style.color = "var(--gold)";
+    db.ref('market/event').on('value', (snap) => {
+        const box = document.getElementById('event-box');
+        if(snap.val()) {
+            box.innerText = "🚨 " + snap.val();
+            box.style.display = "block";
         } else {
-            msg.innerText = "❌ Ongeldige code!";
-            msg.style.color = "red";
+            box.style.display = "none";
         }
-    }
+    });
 
-    function handleManualCode() {
-        const input = document.getElementById('manual-code');
-        processCode(input.value);
-        input.value = "";
-    }
+    // --- CODES DATABASE ---
+    const CODES = { "WOOD1": {t:"wood", a:5}, "ROCK1": {t:"stone", a:2}, "GOLD1": {t:"gold", a:1} };
 
-    // --- VERKOOP ---
-    function sell(item) {
-        if (gameState[item] > 0) {
-            const winst = gameState[item] * currentPrices[item];
-            gameState.cash += winst;
-            gameState[item] = 0;
+    function processCode(code) {
+        code = code.toUpperCase();
+        if(state.used.includes(code)) return alert("Code al gebruikt!");
+        if(CODES[code]) {
+            state[CODES[code].t] += CODES[code].a;
+            state.used.push(code);
             save();
-            document.getElementById('log-msg').innerText = `💰 €${winst} verdiend!`;
+            alert("Ontvangen!");
         }
     }
 
-    // --- SYSTEM ---
-    function showTab(tab) {
-        document.getElementById('tab-market').classList.toggle('hidden', tab !== 'market');
-        document.getElementById('tab-scan').classList.toggle('hidden', tab !== 'scan');
-        document.getElementById('nav-market').classList.toggle('active', tab === 'market');
-        document.getElementById('nav-scan').classList.toggle('active', tab === 'scan');
-        
-        if(tab === 'scan' && !html5QrcodeScanner) {
-            startScanner();
+    function sell(item) {
+        if(state[item] > 0) {
+            state.cash += state[item] * prices[item];
+            state[item] = 0;
+            save();
         }
-    }
-
-    function startScanner() {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 10, 
-            qrbox: {width: 250, height: 250},
-            aspectRatio: 1.0 
-        });
-        html5QrcodeScanner.render((text) => {
-            processCode(text);
-        });
     }
 
     function save() {
-        localStorage.setItem('tp_state', JSON.stringify(gameState));
-        document.getElementById('cash').innerText = Math.floor(gameState.cash);
-        document.getElementById('inv-wood').innerText = gameState.wood;
-        document.getElementById('inv-stone').innerText = gameState.stone;
-        document.getElementById('inv-gold').innerText = gameState.gold;
+        localStorage.setItem('tp_state', JSON.stringify(state));
+        document.getElementById('cash').innerText = Math.floor(state.cash);
+        document.getElementById('inv-wood').innerText = state.wood;
+        document.getElementById('inv-stone').innerText = state.stone;
+        document.getElementById('inv-gold').innerText = state.gold;
+        // Stuur score naar leaderboard
+        db.ref('players/' + playerName).set({ cash: state.cash });
     }
 
-    setInterval(updateMarket, 1000);
-    updateMarket();
+    function showTab(t) {
+        document.getElementById('tab-market').classList.toggle('hidden', t !== 'market');
+        document.getElementById('tab-scan').classList.toggle('hidden', t !== 'scan');
+        if(t === 'scan') startScanner();
+    }
+
+    function startScanner() {
+        const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        scanner.render(processCode);
+    }
+
     save();
 </script>
-
 </body>
 </html>
