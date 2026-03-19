@@ -26,13 +26,17 @@
 
     <script>
         // PLAK HIER DEZELFDE CONFIG
-        const firebaseConfig = {   apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
-  authDomain: "tradingpost-57b20.firebaseapp.com",
-  projectId: "tradingpost-57b20",
-  storageBucket: "tradingpost-57b20.firebasestorage.app",
-  messagingSenderId: "358205969306",
-  appId: "1:358205969306:web:b9f76471828595f6fca023",
-  measurementId: "G-5V2LDELV02" };
+        const firebaseConfig = {
+          apiKey: "AIzaSyAGvUwRjfQQ0QSh2S4n6mGf8k7sZlBggEs",
+          authDomain: "tradingpost-57b20.firebaseapp.com",
+          // VOEG DEZE REGEL TOE:
+          databaseURL: "https://tradingpost-57b20-default-rtdb.europe-west1.firebasedatabase.app", 
+          projectId: "tradingpost-57b20",
+          storageBucket: "tradingpost-57b20.firebasestorage.app",
+          messagingSenderId: "358205969306",
+          appId: "1:358205969306:web:b9f76471828595f6fca023",
+          measurementId: "G-5V2LDELV02"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
