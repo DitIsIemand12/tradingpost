@@ -3,68 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Post - ADMIN PRO</title>
+    <title>Trading Post - ADMIN PANEL</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { margin-top: 0; color: #2c3e50; }
-        input, select { padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
-        button { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button.danger { background: #e74c3c; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
-        .code-display { font-family: monospace; font-weight: bold; background: #eee; padding: 3px 6px; border-radius: 3px; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #1c1e21; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
+        h1, h2 { margin-top: 0; color: #1c1e21; }
+        
+        .grid { display: flex; gap: 15px; margin-bottom: 15px; }
+        .input-group { flex: 1; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        
+        button { background: #1877f2; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; width: 100%; }
+        button:hover { background: #166fe5; }
+        button.danger { background: #f02849; }
+        button.danger:hover { background: #d02030; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        .leader-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 1.1em; }
+        .leader-name { font-weight: bold; }
+        .leader-cash { color: #2ecc71; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>Markt Meester Dashboard</h1>
+<div class="container">
+    <h1>Markt Meester (Admin)</h1>
 
-    <!-- PRIJZEN & EVENTS (Hetzelfde als voorheen) -->
-    <div class="card">
-        <h2>💰 Live Prijzen & 📢 Events</h2>
-        Hout: <input type="number" id="w" value="10" style="width:60px"> 
-        Steen: <input type="number" id="s" value="30" style="width:60px"> 
-        Goud: <input type="number" id="g" value="200" style="width:60px">
-        <button onclick="updatePrices()">Update Prijzen</button>
-        <br><br>
-        Bericht: <input type="text" id="ev" placeholder="Event tekst..." style="width:200px">
-        <button onclick="setEvent()">Verstuur</button> <button class="danger" onclick="clearEvent()">Wis</button>
+    <!-- RESET KNOP BOVENAAN -->
+    <div class="card" style="border: 2px solid #f02849;">
+        <h2>⚠️ Gegevens Beheren</h2>
+        <button class="danger" onclick="resetGame()">RESET HELE SPEL (Verwijder alle spelers & scores)</button>
     </div>
 
-    <!-- NIEUW: CODES BEHEREN -->
+    <!-- PRIJZEN -->
     <div class="card">
-        <h2>🔑 Grondstof Codes Beheren</h2>
-        <p>Voeg hier codes toe die je op QR-kaarten print.</p>
-        <input type="text" id="new-code" placeholder="CODE (bijv: BOOM12)">
-        <select id="new-type">
-            <option value="wood">🪵 Hout</option>
-            <option value="stone">🪨 Steen</option>
-            <option value="gold">💰 Goud</option>
-        </select>
-        Aantal: <input type="number" id="new-amount" value="5" style="width:50px">
-        <button onclick="addCode()">Code Toevoegen</button>
+        <h2>💰 Markt Prijzen</h2>
+        <div class="grid">
+            <div class="input-group">🪵 Hout <input type="number" id="w" value="10"></div>
+            <div class="input-group">🪨 Steen <input type="number" id="s" value="30"></div>
+            <div class="input-group">💰 Goud <input type="number" id="g" value="200"></div>
+        </div>
+        <button onclick="updatePrices()">Update Prijzen op alle telefoons</button>
+    </div>
 
+    <!-- EVENTS -->
+    <div class="card">
+        <h2>📢 Event Bericht</h2>
+        <input type="text" id="ev" placeholder="Bijv: Beurscrash! Steen is niks meer waard..." style="margin-bottom: 10px;">
+        <div class="grid">
+            <button onclick="setEvent()">Stuur Bericht</button>
+            <button class="danger" onclick="clearEvent()">Wis Bericht</button>
+        </div>
+    </div>
+
+    <!-- CODES -->
+    <div class="card">
+        <h2>🔑 QR-Codes Beheren</h2>
+        <div class="grid">
+            <input type="text" id="new-code" placeholder="CODE (bijv: BOOM1)">
+            <select id="new-type">
+                <option value="wood">Hout</option>
+                <option value="stone">Steen</option>
+                <option value="gold">Goud</option>
+            </select>
+            <input type="number" id="new-amount" value="5" style="width: 80px;">
+        </div>
+        <button onclick="addCode()">Code Toevoegen</button>
         <table id="codes-table">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Aantal</th>
-                    <th>Actie</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Code</th><th>Type</th><th>Aantal</th><th>Actie</th></tr></thead>
             <tbody id="codes-list"></tbody>
         </table>
     </div>
 
     <!-- LEADERBOARD -->
     <div class="card">
-        <h2>🏆 Leaderboard</h2>
-        <div id="leaderboard">Laden...</div>
+        <h2>🏆 Live Leaderboard</h2>
+        <div id="leaderboard">Geen spelers gevonden.</div>
     </div>
+</div>
 
 <script>
     const firebaseConfig = {
@@ -81,53 +101,54 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // PRIJZEN & EVENTS FUNCTIONS
-    function updatePrices() { db.ref('market/prices').set({ wood: parseInt(document.getElementById('w').value), stone: parseInt(document.getElementById('s').value), gold: parseInt(document.getElementById('g').value) }); }
-    function setEvent() { db.ref('market/event').set(document.getElementById('ev').value); }
-    function clearEvent() { db.ref('market/event').set(null); }
+    function updatePrices() {
+        db.ref('market/prices').set({
+            wood: parseInt(document.getElementById('w').value),
+            stone: parseInt(document.getElementById('s').value),
+            gold: parseInt(document.getElementById('g').value)
+        }).then(() => alert("Prijzen bijgewerkt!"));
+    }
 
-    // CODES BEHEREN FUNCTIONS
+    function setEvent() { db.ref('market/event').set(document.getElementById('ev').value); }
+    function clearEvent() { db.ref('market/event').set(null); document.getElementById('ev').value = ""; }
+
     function addCode() {
         const code = document.getElementById('new-code').value.toUpperCase().trim();
         const type = document.getElementById('new-type').value;
         const amount = parseInt(document.getElementById('new-amount').value);
-
-        if(!code) return alert("Voer een code in!");
-
+        if(!code) return;
         db.ref('market/codes/' + code).set({ t: type, a: amount });
         document.getElementById('new-code').value = "";
     }
 
-    function deleteCode(code) {
-        if(confirm("Code " + code + " verwijderen?")) {
-            db.ref('market/codes/' + code).remove();
+    function deleteCode(code) { db.ref('market/codes/' + code).remove(); }
+
+    function resetGame() {
+        if(confirm("WEET JE HET ZEKER? Alle spelers, scores en codes worden gewist!")) {
+            db.ref('players').remove();
+            db.ref('market/event').remove();
+            alert("Spel is gereset!");
         }
     }
 
-    // Luister naar beschikbare codes
+    // Listeners
     db.ref('market/codes').on('value', snap => {
         let html = "";
-        snap.forEach(child => {
-            const c = child.key;
-            const d = child.val();
-            html += `<tr>
-                <td><span class="code-display">${c}</span></td>
-                <td>${d.t}</td>
-                <td>${d.a}</td>
-                <td><button class="danger" onclick="deleteCode('${c}')">X</button></td>
-            </tr>`;
+        snap.forEach(c => {
+            html += `<tr><td><b>${c.key}</b></td><td>${c.val().t}</td><td>${c.val().a}</td><td><button class="danger" onclick="deleteCode('${c.key}')" style="padding:5px">X</button></td></tr>`;
         });
         document.getElementById('codes-list').innerHTML = html;
     });
 
-    // LEADERBOARD (Gesorteerd)
     db.ref('players').on('value', snap => {
-        let pArr = [];
-        snap.forEach(c => { pArr.push({name: c.val().name, cash: c.val().cash}); });
-        pArr.sort((a,b) => b.cash - a.cash);
-        let html = "<ol>";
-        pArr.forEach(p => { html += `<li><b>${p.name}</b>: €${Math.floor(p.cash)}</li>`; });
-        document.getElementById('leaderboard').innerHTML = html + "</ol>";
+        let p = [];
+        snap.forEach(c => { p.push({name: c.val().name, cash: c.val().cash}); });
+        p.sort((a,b) => b.cash - a.cash);
+        let html = "";
+        p.forEach(player => {
+            html += `<div class="leader-row"><span class="leader-name">${player.name}</span><span class="leader-cash">€${Math.floor(player.cash)}</span></div>`;
+        });
+        document.getElementById('leaderboard').innerHTML = p.length ? html : "Geen spelers.";
     });
 </script>
 </body>
